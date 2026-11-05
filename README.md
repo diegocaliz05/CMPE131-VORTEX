@@ -1,71 +1,47 @@
-# Setup
+Setup:
 
-## 1. Install Python at python.org
+1. Install python at python.org  
+   - Say yes to "Enable/Add Python to PATH" if prompted  
+   - Complete Python install, and restart VS Code after installation  
 
-- Say yes to **"Enable/Add Python to PATH"** if prompted.
-- Complete Python install, and restart VS Code after installation.
+py --version #type in terminal to verify python is installed  
 
-Type this in the terminal to verify Python is installed:
+2. Clone the Repository  
 
-```bash
-py --version
-```
+git clone https://github.com/diegocaliz05/CMPE131-VORTEX.git  
+cd CMPE131-VORTEX  
 
-## 2. Clone the Repository
+3. Install dependencies:  
 
-```bash
-git clone https://github.com/diegocaliz05/CMPE131-VORTEX.git
-cd CMPE131-VORTEX
-```
+py -m pip install -r requirements.txt #copy and paste the line into terminal  
 
-## 3. Install dependencies
+4. Run the app:  
 
-Copy and paste this line into the terminal:
+py app.py #starts local flask server  
 
-```bash
-py -m pip install -r requirements.txt
-```
+5. Open:  
 
-## 4. Run the app
+http://127.0.0.1:5000  
 
-Starts the local Flask server:
+Team Development Workflow:
 
-```bash
-py app.py
-```
+1. Before starting new work:  
 
-## 5. Open
+git checkout main  
+git pull  
+git checkout -b feature-name #see examples below  
 
-```text
-http://127.0.0.1:5000
-```
+examples:  
+git checkout -b feature-login  
+git checkout -b feature-calendar  
+git checkout -b feature-database  
 
-# Team Development Workflow
+2. After making changes:  
 
-## 1. Before starting new work
+git add .  
+git commit -m "Describe what you changed"  
+git push -u origin feature-name  
 
-```bash
-git checkout main
-git pull
-git checkout -b feature-name
-```
+Then create a Pull Request on GitHub to merge your branch into main.  
 
-See examples below:
-
-```bash
-git checkout -b feature-login
-git checkout -b feature-calendar
-git checkout -b feature-database
-```
-
-## 2. After making changes
-
-```bash
-git add .
-git commit -m "Describe what you changed"
-git push -u origin feature-name
-```
-
-Then create a Pull Request on GitHub to merge your branch into `main`.
-
-**IMPORTANT: DO NOT make major feature changes directly on `main`!**
+***IMPORTANT: DO NOT make major feature changes directly on main!***
