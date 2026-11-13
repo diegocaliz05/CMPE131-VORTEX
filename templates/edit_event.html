@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Event - Vortex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <h1>Edit Event</h1>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    <form method="POST">
+
+        <label>Event Name:</label><br>
+        <input type="text" name="event_name" value="{{ event.event_name }}"><br><br>
+
+        <label>Description:</label><br>
+        <textarea name="description">{{ event.description }}</textarea><br><br>
+
+        <label>Date:</label><br>
+        <input type="date" name="event_date" value="{{ event.event_date }}"><br><br>
+
+        <label>Start Time:</label><br>
+        <input type="time" name="start_time" value="{{ event.start_time }}"><br><br>
+
+        <label>End Time:</label><br>
+        <input type="time" name="end_time" value="{{ event.end_time }}"><br><br>
+
+        <label>Location:</label><br>
+        <input type="text" name="location" value="{{ event.location }}"><br><br>
+
+        <label>
+            <input type="checkbox" name="acknowledge_conflicts">
+            Save even if there is a scheduling conflict
+        </label><br><br>
+
+        <button type="submit">Save Changes</button>
+
+    </form>
+
+    <br>
+    <a href="/officer-calendar">Back to Officer Calendar</a>
+
+</body>
+</html>
