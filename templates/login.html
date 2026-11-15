@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}{{'Create account' if register else 'Sign in'}}{% endblock %}
+{% block content %}<section class="panel narrow"><h1>{{'Create account' if register else 'Sign in'}}</h1><p>Access your club calendar.</p>
+<form method="post" class="stack">{{token()}}{% if register %}<label>Name<input name="name" autocomplete="name" required></label>{% endif %}
+<label>Email<input type="email" name="email" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="{{'new-password' if register else 'current-password'}}" required></label>
+<button>{{'Create account' if register else 'Sign in'}}</button></form><p><a href="{{url_for('login' if register else 'register')}}">{{'Back to sign in' if register else 'Create an account'}}</a></p></section>{% endblock %}

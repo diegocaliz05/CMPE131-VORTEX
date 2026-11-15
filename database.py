@@ -18,4 +18,8 @@ def init_db(db_path=None):
     """Create all tables/indexes if they do not exist (idempotent)."""
     with closing(get_db_connection(db_path)) as conn:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        conn.execute("BEGIN IMMEDIATE")
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(events)")}
+        if "event_type" not in columns:
+            conn.execute("ALTER TABLE events ADD COLUMN event_type TEXT NOT NULL DEFAULT ''")
         conn.commit()

@@ -1,27 +1,36 @@
-Setup:
+# Vortex club calendar
 
-1. Install python at python.org  
-   - Say yes to "Enable/Add Python to PATH" if prompted  
-   - Complete Python install, and restart VS Code after installation  
+## Run the project on Windows
 
-py --version #type in terminal to verify python is installed  
+Extract the ZIP. Open the folder containing app.py in VS Code. In its terminal, run:
 
-2. Clone the Repository  
+```powershell
+py -m pip install -r requirements.txt
+py app.py
+```
 
-git clone https://github.com/diegocaliz05/CMPE131-VORTEX.git  
-cd CMPE131-VORTEX  
+Open http://127.0.0.1:5000. On macOS or Linux, use python3 instead of py.
+On first launch, Vortex creates vortex.db beside app.py and prepares local demo accounts.
 
-3. Install dependencies:  
+| Account | Email | Password |
+| --- | --- | --- |
+| Robotics officer | officer@vortex.edu | password123 |
+| Chess officer | chess.officer@vortex.edu | password123 |
+| Robotics member | member@vortex.edu | password123 |
 
-py -m pip install -r requirements.txt #copy and paste the line into terminal  
+Sign in as an officer to create an event. It starts as tentative. Confirm it,
+then sign in as the member in a private browser window to check the calendar and
+notifications. A new self-registered account can browse confirmed events.
+Use List view or Month view and filter by keyword, club, date, room, or event type.
+Event and account data persist across restarts. Stop the server with Ctrl+C.
 
-4. Run the app:  
+## Run tests
 
-py app.py #starts local flask server  
+From the same folder:
 
-5. Open:  
-
-http://127.0.0.1:5000  
+```powershell
+py -m unittest discover -s tests -t . -v
+```
 
 Team Development Workflow:
 
