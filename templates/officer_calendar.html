@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Officer Calendar - Vortex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <h1>Officer Calendar</h1>
+
+    {% if events %}
+        {% for event in events %}
+
+        <div class="event-card">
+
+            <h3>{{ event.event_name }}</h3>
+
+            <p>Club: {{ event.club_name }}</p>
+            <p>Description: {{ event.description }}</p>
+            <p>Date: {{ event.event_date }}</p>
+            <p>Time: {{ event.start_time }} - {{ event.end_time }}</p>
+            <p>Location: {{ event.location }}</p>
+            <p>Status: {{ event.status.value }}</p>
+
+            <div class="event-actions">
+
+                <a class="action-button" href="/create-event">
+                    Create New Event
+                </a>
+
+                {% if event.status.value != "cancelled" %}
+                    <a class="action-button" href="/edit-event/{{ event.event_id }}">
+                        Edit Event
+                    </a>
+                {% endif %}
+
+                {% if event.status.value == "tentative" %}
+                    <form method="POST" action="/confirm-event/{{ event.event_id }}">
+                        <button class="action-button" type="submit">
+                            Confirm Event
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if event.status.value != "cancelled" %}
+                    <form method="POST" action="/cancel-event/{{ event.event_id }}">
+                        <button class="action-button" type="submit">
+                            Cancel Event
+                        </button>
+                    </form>
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+    {% else %}
+        <p>No events found.</p>
+    {% endif %}
+
+</body>
+</html>

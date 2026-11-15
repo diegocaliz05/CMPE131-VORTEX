@@ -8,7 +8,7 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
 def get_db_connection(db_path=None):
-    conn = sqlite3.connect(db_path or DATABASE)
+    conn = sqlite3.connect(db_path or DATABASE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
