@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
     club_id INTEGER NOT NULL,
     event_name TEXT NOT NULL,
+    event_type TEXT NOT NULL DEFAULT '',
     description TEXT,
     event_date TEXT NOT NULL,
     start_time TEXT NOT NULL,
