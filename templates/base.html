@@ -1,0 +1,91 @@
+```html
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>
+        {% block title %}
+            Calendar
+        {% endblock %}
+        · Vortex
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+
+    {% macro token() %}
+        <input
+            type="hidden"
+            name="token"
+            value="{{ session.token }}"
+        >
+    {% endmacro %}
+
+    <header>
+        <div class="bar">
+
+            <a
+                class="brand"
+                href="{{ url_for('calendar') }}"
+            >
+                Vortex
+            </a>
+
+            {% if g.access %}
+
+                <nav>
+
+                    <a href="{{ url_for('calendar') }}">
+                        Calendar
+                    </a>
+
+                    <a href="{{ url_for('notifications') }}">
+                        Notifications
+                    </a>
+
+                    <form
+                        action="{{ url_for('logout') }}"
+                        method="post"
+                    >
+                        {{ token() }}
+
+                        <button class="link">
+                            Sign out
+                        </button>
+                    </form>
+
+                </nav>
+
+            {% endif %}
+
+        </div>
+    </header>
+
+    <main>
+
+        {% for msg in get_flashed_messages() %}
+            <p
+                class="notice"
+                role="status"
+            >
+                {{ msg }}
+            </p>
+        {% endfor %}
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+</body>
+
+</html>
+```

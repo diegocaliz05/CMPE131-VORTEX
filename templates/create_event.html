@@ -1,45 +1,72 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Create Event - Vortex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-    <h1>Create Event</h1>
+{% block title %}
+Event details
+{% endblock %}
 
-    {% if message %}
-        <p>{{ message }}</p>
+{% block content %}
+
+<a href="{{ url_for('calendar') }}">Back to calendar</a>
+
+<h1>{{ 'Edit event' if editing else 'Create event' }}</h1>
+
+<form method="post" class="panel stack">
+    {{ token() }}
+
+    {% if not editing %}
+        <label>
+            Club
+            <select name="club_id">
+                {% for c in clubs %}
+                    <option value="{{ c.club_id }}"
+                        {% if (values.get('club_id')|string) == (c.club_id|string) %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ c.club_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
     {% endif %}
 
-    <form method="POST">
-
-        <label>Event Name:</label><br>
-        <input type="text" name="event_name"><br><br>
-
-        <label>Description:</label><br>
-        <textarea name="description"></textarea><br><br>
-
-        <label>Date:</label><br>
-        <input type="date" name="event_date"><br><br>
-
-        <label>Start Time:</label><br>
-        <input type="time" name="start_time"><br><br>
-
-        <label>End Time:</label><br>
-        <input type="time" name="end_time"><br><br>
-
-        <label>Location:</label><br>
-        <input type="text" name="location"><br><br>
-
+    {% for key, label, kind in [
+        ('event_name', 'Event name', 'text'),
+        ('event_type', 'Event type', 'text'),
+        ('event_date', 'Date', 'date'),
+        ('start_time', 'Start time', 'time'),
+        ('end_time', 'End time', 'time'),
+        ('location', 'Location', 'text')
+    ] %}
         <label>
-            <input type="checkbox" name="acknowledge_conflicts">
-            Save even if there is a scheduling conflict
-        </label><br><br>
+            {{ label }}
 
-        <button type="submit">Create Event</button>
-        <a href="/officer-calendar">Back to Officer Calendar</a>
-    </form>
+            <input
+                name="{{ key }}"
+                type="{{ kind }}"
+                value="{{ values.get(key, '') }}"
+                {% if key != 'event_type' %}required{% endif %}
+            >
 
-</body>
-</html>
+            {% if result %}
+                <small>{{ result.errors.get(key, '') }}</small>
+            {% endif %}
+        </label>
+    {% endfor %}
+
+    <label>
+        Description
+        <textarea name="description">{{ values.get('description', '') }}</textarea>
+    </label>
+
+    {% if result and result.code == 'conflict' and values.get('status') != 'confirmed' %}
+        <label>
+            <input type="checkbox" name="ack" value="yes">
+            Save as tentative despite this conflict
+        </label>
+    {% endif %}
+
+    <button type="submit">Save event</button>
+</form>
+
+{% endblock %}

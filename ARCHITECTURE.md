@@ -10,7 +10,7 @@ services/  authentication  event_management  conflict_detection  calendar_displa
 - `DataStorage` is the only class that runs SQL. Writes never commit; services own transactions.
 - Components return `services.results.Result` for expected outcomes; only storage errors raise.
 - `services.Services` wires the seven components around one `DataStorage`.
-- Not covered yet: event type search (no `type` column in `events`).
+- Event type is stored on events and available as a case-insensitive calendar filter.
 
 Tests: `py -m unittest discover -s tests -t . -v` (one class: `-m unittest tests.test_app.TestAuthentication`).
 Needs Flask installed (Authentication uses Werkzeug's password hashing).

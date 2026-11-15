@@ -31,11 +31,13 @@ class Event:
     event_id: Optional[int] = None
     club_name: str = ""          # joined for display only, not a column
 
+    event_type: str = ""
+
     @classmethod
     def from_row(cls, row):
         keys = row.keys()
         return cls(event_id=row["event_id"], club_id=row["club_id"], event_name=row["event_name"],
-                   description=row["description"] or "", event_date=row["event_date"],
+                   event_type=row["event_type"], description=row["description"] or "", event_date=row["event_date"],
                    start_time=row["start_time"], end_time=row["end_time"],
                    location=row["location"] or "", status=EventStatus(row["status"]),
                    club_name=row["club_name"] if "club_name" in keys else "")

@@ -23,8 +23,10 @@ class DataStorage:
         self.conn.close()
 
     @contextmanager
-    def transaction(self):
+    def transaction(self, immediate=False):
         try:
+            if immediate:
+                self.conn.execute("BEGIN IMMEDIATE")
             yield self
             self.conn.commit()
         except sqlite3.IntegrityError as exc:
@@ -96,9 +98,9 @@ class DataStorage:
     def add_event(self, event: Event) -> Event:
         event.event_id = self.conn.execute(
             "INSERT INTO events (club_id, event_name, description, event_date, start_time, "
-            "end_time, location, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "end_time, location, status, event_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (event.club_id, event.event_name, event.description, event.event_date,
-             event.start_time, event.end_time, event.location, event.status.value)).lastrowid
+             event.start_time, event.end_time, event.location, event.status.value, event.event_type)).lastrowid
         return event
 
     def get_event(self, event_id):
@@ -108,9 +110,9 @@ class DataStorage:
     def update_event(self, event: Event):
         self.conn.execute(
             "UPDATE events SET event_name = ?, description = ?, event_date = ?, start_time = ?, "
-            "end_time = ?, location = ?, status = ? WHERE event_id = ?",
+            "end_time = ?, location = ?, status = ?, event_type = ? WHERE event_id = ?",
             (event.event_name, event.description, event.event_date, event.start_time,
-             event.end_time, event.location, event.status.value, event.event_id))
+             event.end_time, event.location, event.status.value, event.event_type, event.event_id))
 
     def set_event_status(self, event_id, status):
         self.conn.execute("UPDATE events SET status = ? WHERE event_id = ?",
@@ -140,7 +142,7 @@ class DataStorage:
         return Event.from_row(row) if row else None
 
     def search_events(self, *, keyword=None, club_id=None, event_date=None, location=None,
-                      manage_club_ids=()):
+                      manage_club_ids=(), event_type=None):
         """Role-filtered read. Everyone sees confirmed events; officers also see the
         tentative events of the clubs they are officers of. Cancelled events are hidden."""
         manage = sorted(manage_club_ids)
@@ -159,6 +161,9 @@ class DataStorage:
         if event_date:
             where.append("e.event_date = ?")
             params.append(event_date)
+        if event_type:
+            where.append("e.event_type = ? COLLATE NOCASE")
+            params.append(event_type.strip())
         if location:
             where.append("e.location LIKE ? ESCAPE '\\'")
             params.append(_like(location))

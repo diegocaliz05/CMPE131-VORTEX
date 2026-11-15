@@ -1,4 +1,5 @@
 import logging
+from functools import wraps
 from datetime import datetime
 
 from exceptions import DuplicateRecordError, StorageError
@@ -6,7 +7,7 @@ from models import Event, EventStatus
 from .results import (BAD_STATE, CONFIRM_REQUIRED, CONFLICT, DUPLICATE, INVALID, STORAGE_ERROR, Result)
 
 log = logging.getLogger("vortex.events")
-_LIMITS = {"event_name": 120, "description": 2000, "location": 200}
+_LIMITS = {"event_name": 120, "description": 2000, "location": 200, "event_type": 80}
 REQUIRED = ("event_name", "event_date", "start_time", "end_time", "location")
 
 
@@ -15,7 +16,7 @@ class EventValidator:
 
     def validate(self, data):
         cleaned = {k: str(data.get(k) or "").strip() for k in
-                   ("event_name", "description", "event_date", "start_time", "end_time", "location")}
+                   ("event_name", "description", "event_type", "event_date", "start_time", "end_time", "location")}
         errors = {f: "required" for f in REQUIRED if not cleaned[f]}
         for field_name, limit in _LIMITS.items():
             if len(cleaned[field_name]) > limit:
@@ -36,6 +37,21 @@ class EventValidator:
         return cleaned, errors
 
 
+def event_transaction(method):
+    """Serialize validation, conflict checks, writes, and notifications together."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        try:
+            with self._storage.transaction(immediate=True):
+                return method(self, *args, **kwargs)
+        except DuplicateRecordError:
+            return Result.fail(DUPLICATE, "That event already exists.")
+        except StorageError:
+            log.exception("storage failure")
+            return Result.fail(STORAGE_ERROR, "The event could not be saved. Please try again.")
+    return wrapped
+
+
 class EventManagement:
     """Module 2. Every write needs an officer Membership for the event's club_id; a member
     (or an officer of another club) gets a denial Result. Writes return Result, never raise."""
@@ -44,18 +60,6 @@ class EventManagement:
         self._storage, self._conflicts, self._notifications = storage, conflicts, notifications
         self._validator = validator or EventValidator()
 
-    def _run(self, work):
-        """Run `work` in one transaction; returns a failure Result or None on success."""
-        try:
-            with self._storage.transaction():
-                work()
-        except DuplicateRecordError:
-            return Result.fail(DUPLICATE, "That event already exists.")
-        except StorageError:
-            log.exception("storage failure")
-            return Result.fail(STORAGE_ERROR, "The event could not be saved. Please try again.")
-        return None
-
     def get_event(self, access, event_id) -> Result:
         """Tentative/cancelled events are visible only to officers of that club."""
         event = self._storage.get_event(event_id)
@@ -63,6 +67,7 @@ class EventManagement:
             return Result.not_found()
         return Result.success(event=event)
 
+    @event_transaction
     def create_event(self, access, club_id, data, acknowledge_conflicts=False) -> Result:
         if not access.is_officer_of(club_id):
             return Result.denied()
@@ -79,12 +84,11 @@ class EventManagement:
         if check.has_conflict and not acknowledge_conflicts:
             return Result.fail(CONFLICT, "This overlaps another event. Save anyway to keep it tentative.",
                                conflicts=check.conflicts)
-        failure = self._run(lambda: self._storage.add_event(event))
-        if failure:
-            return failure
+        self._storage.add_event(event)
         log.info("event created id=%s club=%s", event.event_id, club_id)
         return Result.success("Event saved as tentative.", event=event)
 
+    @event_transaction
     def edit_event(self, access, event_id, data, acknowledge_conflicts=False) -> Result:
         found = self._storage.get_event(event_id)
         if found is None:
@@ -96,6 +100,8 @@ class EventManagement:
         cleaned, errors = self._validator.validate(data)
         if errors:
             return Result.fail(INVALID, "Fix the highlighted fields.", errors=errors)
+        if "event_type" not in data:
+            cleaned["event_type"] = found.event_type
         updated = Event(club_id=found.club_id, club_name=found.club_name, status=found.status,
                         event_id=found.event_id, **cleaned)
         if self._storage.find_duplicate(updated, exclude_event_id=found.event_id):
@@ -107,13 +113,12 @@ class EventManagement:
         if check.has_conflict and (public or not acknowledge_conflicts):
             return Result.fail(CONFLICT, "This change overlaps another event.", conflicts=check.conflicts)
 
-        def work():
-            self._storage.update_event(updated)
-            if public:
-                self._notifications.create_notification(updated, "updated")
-        failure = self._run(work)
-        return failure or Result.success("Event updated.", event=updated)
+        self._storage.update_event(updated)
+        if public:
+            self._notifications.create_notification(updated, "updated")
+        return Result.success("Event updated.", event=updated)
 
+    @event_transaction
     def confirm_event(self, access, event_id) -> Result:
         event = self._storage.get_event(event_id)
         if event is None:
@@ -133,12 +138,11 @@ class EventManagement:
             return Result.fail(CONFLICT, "Resolve the conflict before confirming.", conflicts=check.conflicts)
         event.status = EventStatus.CONFIRMED
 
-        def work():
-            self._storage.set_event_status(event.event_id, event.status)
-            self._notifications.create_notification(event, "confirmed")
-        failure = self._run(work)
-        return failure or Result.success("Event confirmed.", event=event)
+        self._storage.set_event_status(event.event_id, event.status)
+        self._notifications.create_notification(event, "confirmed")
+        return Result.success("Event confirmed.", event=event)
 
+    @event_transaction
     def cancel_event(self, access, event_id, confirmed=False) -> Result:
         event = self._storage.get_event(event_id)
         if event is None:
@@ -152,9 +156,7 @@ class EventManagement:
         was_public = event.status == EventStatus.CONFIRMED
         event.status = EventStatus.CANCELLED
 
-        def work():
-            self._storage.set_event_status(event.event_id, event.status)
-            if was_public:  # members never saw a tentative event
-                self._notifications.create_notification(event, "cancelled")
-        failure = self._run(work)
-        return failure or Result.success("Event cancelled.", event=event)
+        self._storage.set_event_status(event.event_id, event.status)
+        if was_public:  # members never saw a tentative event
+            self._notifications.create_notification(event, "cancelled")
+        return Result.success("Event cancelled.", event=event)
