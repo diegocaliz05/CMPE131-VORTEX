@@ -22,6 +22,7 @@ Sign in as an officer to create an event. It starts as tentative. Confirm it,
 then sign in as the member in a private browser window to check the calendar and
 notifications. A new self-registered account can browse confirmed events.
 Use List view or Month view and filter by keyword, club, date, room, or event type.
+The list shows 25 events per page and keeps the active filters when you move between pages. In Notifications, select Unread only or Mark all as read to manage your inbox.
 Event and account data persist across restarts. Stop the server with Ctrl+C.
 
 ## Run tests
