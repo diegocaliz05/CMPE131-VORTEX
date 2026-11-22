@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+<p>{{ unread }} unread</p>
+<nav class="actions" aria-label="Inbox filters">
+    <a href="{{ url_for('notifications') }}">All messages</a>
+    <a href="{{ url_for('notifications', filter='unread') }}">Unread only</a>
+</nav>
+{% if unread %}
+<form method="post" action="{{ url_for('read_all_notifications', filter='unread' if unread_only else none) }}">
+    {{ token() }}<button>Mark all as read</button>
+</form>
+{% endif %}
+{% for n in items %}
+    <article>
+        <p>{{ n.message }}</p>
+        {% if n.read_status %}<small>Read</small>
+        {% else %}
+            <form method="post" action="{{ url_for('read_notification', item_id=n.notification_id, filter='unread' if unread_only else none) }}">
+                {{ token() }}<button>Mark read</button>
+            </form>
+        {% endif %}
+    </article>
+{% else %}
+    <p>{{ 'No unread notifications.' if unread_only else 'No notifications yet.' }}</p>
+{% endfor %}
+{% endblock %}

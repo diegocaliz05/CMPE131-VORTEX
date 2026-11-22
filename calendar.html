@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="heading">
+    <div>
+        <p>{{ g.access.name }} · {{ g.access.role_label }}</p>
+        <h1>Club calendar</h1>
+    </div>
+
+    {% if g.access.is_officer %}
+        <a class="button" href="{{ url_for('event_form') }}">
+            Create event
+        </a>
+    {% endif %}
+</div>
+
+<p class="actions">
+    <a href="{{ view_url('list') }}">List view</a>
+    <a href="{{ view_url('month') }}">Month view</a>
+</p>
+
+<form class="panel filters" method="get">
+
+    {% if month %}
+        <input type="hidden" name="view" value="month">
+        <input type="hidden" name="month" value="{{ month.strftime('%Y-%m') }}">
+    {% endif %}
+
+    <label>
+        Keyword
+        <input
+            name="keyword"
+            value="{{ request.args.get('keyword', '') }}"
+        >
+    </label>
+
+    <label>
+        Club
+
+        <select name="club_id">
+            <option value="">All clubs</option>
+
+            {% for c in clubs %}
+                <option
+                    value="{{ c.club_id }}"
+                    {% if request.args.get('club_id') == c.club_id|string %}
+                        selected
+                    {% endif %}
+                >
+                    {{ c.club_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </label>
+
+    {% for key, label, kind in [
+        ('date', 'Date', 'date'),
+        ('location', 'Location', 'text'),
+        ('event_type', 'Event type', 'text')
+    ] %}
+        <label>
+            {{ label }}
+
+            <input
+                type="{{ kind }}"
+                name="{{ key }}"
+                value="{{ request.args.get(key, '') }}"
+            >
+        </label>
+    {% endfor %}
+
+    <div class="actions">
+        <button>Filter</button>
+        <a href="{{ url_for('calendar') }}">Clear</a>
+    </div>
+
+</form>
+
+{% if month %}
+
+    <div class="heading">
+        <h2>{{ month.strftime('%B %Y') }}</h2>
+
+        <div class="actions">
+            <a href="{{ view_url('month', previous) }}">
+                Previous month
+            </a>
+
+            <a href="{{ view_url('month', following) }}">
+                Next month
+            </a>
+        </div>
+    </div>
+
+    <div class="month-scroll">
+
+        <table class="month">
+
+            <thead>
+                <tr>
+                    {% for name in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        <th>{{ name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% set by_day = dict(events|groupby('event_date')) %}
+
+                {% for week in weeks %}
+                    <tr>
+
+                        {% for day in week %}
+                            <td>
+
+                                {% if day %}
+                                    {{ day }}
+
+                                    {% set key = month.replace(day=day).isoformat() %}
+
+                                    {% for e in by_day.get(key, []) %}
+                                        <a href="{{ url_for('calendar', date=key) }}">
+                                            {{ e.start_time }} {{ e.event_name }}
+                                        </a>
+                                    {% endfor %}
+
+                                {% endif %}
+
+                            </td>
+                        {% endfor %}
+
+                    </tr>
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+{% else %}
+
+    {% for day, rows in events|groupby('event_date') %}
+
+        <section>
+
+            <h2>{{ day }}</h2>
+
+            {% for e in rows %}
+
+                <article>
+
+                    <div class="time">
+                        {{ e.start_time }} – {{ e.end_time }}
+                    </div>
+
+                    <div>
+
+                        <small>
+                            {{ e.club_name }} · {{ e.status.value|capitalize }}
+                        </small>
+
+                        <h3>{{ e.event_name }}</h3>
+
+                        <p>
+                            {{ e.location }}
+
+                            {% if e.event_type %}
+                                · {{ e.event_type }}
+                            {% endif %}
+                        </p>
+
+                        {% if e.description %}
+                            <p>{{ e.description }}</p>
+                        {% endif %}
+
+                    </div>
+
+                    {% if g.access.is_officer_of(e.club_id) %}
+
+                        <div class="actions">
+
+                            <a href="{{ url_for('event_form', event_id=e.event_id) }}">
+                                Edit
+                            </a>
+
+                            {% if e.status.value == 'tentative' %}
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for('confirm', event_id=e.event_id) }}"
+                                >
+                                    {{ token() }}
+
+                                    <button>
+                                        Confirm
+                                    </button>
+                                </form>
+
+                            {% endif %}
+
+                            <a href="{{ url_for('cancel', event_id=e.event_id) }}">
+                                Cancel
+                            </a>
+
+                        </div>
+
+                    {% endif %}
+
+                </article>
+
+            {% endfor %}
+
+        </section>
+
+    {% else %}
+
+        <p class="panel">
+            No events found.
+        </p>
+
+    {% endfor %}
+
+{% endif %}
+
+{% if not month and pages > 1 %}
+    <nav class="actions" aria-label="Event pages">
+        {% if page > 1 %}<a href="{{ page_url(page - 1) }}">Previous page</a>{% endif %}
+        <span>Page {{ page }} of {{ pages }}</span>
+        {% if page < pages %}<a href="{{ page_url(page + 1) }}">Next page</a>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}
