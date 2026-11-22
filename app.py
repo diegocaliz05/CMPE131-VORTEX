@@ -70,6 +70,7 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.get("/officer-calendar")
 @app.get("/")
 @app.get("/events")
 @app.get("/calendar")
@@ -92,15 +93,28 @@ def calendar():
         following = (month + timedelta(days=32)).strftime("%Y-%m")
     def view_url(view, month_value=None):
         args = request.args.to_dict()
+        args.pop("page", None)
         args.update(view=view)
         if month_value:
             args["month"] = month_value
         return url_for("calendar", **args)
-    return render_template("calendar.html", events=result.events, clubs=g.storage.list_clubs(),
+    events = result.events
+    page_size = 25
+    pages = max(1, (len(events) + page_size - 1) // page_size)
+    page = min(pages, max(1, request.args.get("page", default=1, type=int)))
+    if month is None:
+        events = events[(page - 1) * page_size:page * page_size]
+
+    def page_url(number):
+        return url_for("calendar", **dict(request.args.to_dict(), page=number))
+
+    return render_template("calendar.html", events=events, page=page, pages=pages, page_url=page_url, clubs=g.storage.list_clubs(),
                            month=month, weeks=weeks, previous=previous, following=following,
                            view_url=view_url)
 
 
+@app.route("/create-event", methods=["GET", "POST"])
+@app.route("/edit-event/<int:event_id>", methods=["GET", "POST"])
 @app.route("/events/new", methods=["GET", "POST"])
 @app.route("/events/<int:event_id>/edit", methods=["GET", "POST"])
 def event_form(event_id=None):
@@ -130,12 +144,14 @@ def event_form(event_id=None):
     return render_template("create_event.html", values=values, clubs=clubs, result=result, editing=event_id is not None)
 
 
+@app.post("/confirm-event/<int:event_id>")
 @app.post("/events/<int:event_id>/confirm")
 def confirm(event_id):
     flash(g.services.events.confirm_event(g.access, event_id).message)
     return redirect(url_for("calendar"))
 
 
+@app.post("/cancel-event/<int:event_id>")
 @app.route("/events/<int:event_id>/cancel", methods=["GET", "POST"])
 def cancel(event_id):
     event = g.storage.get_event(event_id)
@@ -151,13 +167,22 @@ def cancel(event_id):
 
 @app.get("/notifications")
 def notifications():
-    return render_template("notifications.html", items=g.services.notifications.list_for(g.access.user_id))
+    unread_only = request.args.get("filter") == "unread"
+    inbox = g.services.notifications
+    return render_template("notifications.html", items=inbox.list_for(g.access.user_id, unread_only),
+                           unread=inbox.unread_count(g.access.user_id), unread_only=unread_only)
+
+
+@app.post("/notifications/read-all")
+def read_all_notifications():
+    g.services.notifications.mark_all_read(g.access.user_id)
+    return redirect(url_for("notifications", filter=request.args.get("filter")))
 
 
 @app.post("/notifications/<int:item_id>/read")
 def read_notification(item_id):
     g.services.notifications.mark_read(item_id, g.access.user_id)
-    return redirect(url_for("notifications"))
+    return redirect(url_for("notifications", filter=request.args.get("filter")))
 
 
 def prepare_database():
@@ -170,148 +195,6 @@ def prepare_database():
         storage.close()
 
 
-
-@app.route("/create-event", methods=["GET", "POST"])
-def create_event():
-
-    # TEMPORARY:
-    # Use the seeded officer account until login is connected to Flask
-    user = storage.get_user_by_email("officer@vortex.edu")
-
-    if user is None:
-        return "Run py seed.py first."
-
-    access = services.authentication.load_access(user.user_id)
-
-    if not access.authorized_clubs:
-        return "Demo officer does not manage a club."
-
-    club_id = access.authorized_clubs[0].club_id
-
-    message = ""
-
-    if request.method == "POST":
-
-        event_data = {
-            "event_name": request.form.get("event_name"),
-            "description": request.form.get("description"),
-            "event_date": request.form.get("event_date"),
-            "start_time": request.form.get("start_time"),
-            "end_time": request.form.get("end_time"),
-            "location": request.form.get("location")
-        }
-
-        acknowledge = "acknowledge_conflicts" in request.form
-
-        result = services.events.create_event(
-            access,
-            club_id,
-            event_data,
-            acknowledge_conflicts=acknowledge
-        )
-
-        message = result.message
-
-    return render_template(
-        "create_event.html",
-        message=message
-    )
-
-@app.route("/officer-calendar")
-def officer_calendar():
-
-    user = storage.get_user_by_email("officer@vortex.edu")
-
-    if user is None:
-        return "Run py seed.py first."
-
-    access = services.authentication.load_access(user.user_id)
-
-    calendar = services.calendar.view(access)
-
-    return render_template(
-        "officer_calendar.html",
-        events=calendar.events
-    )
-
-@app.route("/confirm-event/<int:event_id>", methods=["POST"])
-def confirm_event(event_id):
-    user = storage.get_user_by_email("officer@vortex.edu")
-
-    if user is None:
-        return "Run py seed.py first."
-
-    access = services.authentication.load_access(user.user_id)
-
-    result = services.events.confirm_event(access, event_id)
-
-    return redirect("/officer-calendar")
-
-@app.route("/cancel-event/<int:event_id>", methods=["POST"])
-def cancel_event(event_id):
-    user = storage.get_user_by_email("officer@vortex.edu")
-
-    if user is None:
-        return "Run py seed.py first."
-
-    access = services.authentication.load_access(user.user_id)
-
-    result = services.events.cancel_event(
-        access,
-        event_id,
-        confirmed=True
-    )
-
-    return redirect("/officer-calendar")
-
-@app.route("/edit-event/<int:event_id>", methods=["GET", "POST"])
-def edit_event(event_id):
-    user = storage.get_user_by_email("officer@vortex.edu")
-
-    if user is None:
-        return "Run py seed.py first."
-
-    access = services.authentication.load_access(user.user_id)
-
-    event_result = services.events.get_event(access, event_id)
-
-    if not event_result.ok:
-        return event_result.message
-
-    event = event_result.event
-
-    if request.method == "POST":
-        event_data = {
-            "event_name": request.form.get("event_name"),
-            "description": request.form.get("description"),
-            "event_date": request.form.get("event_date"),
-            "start_time": request.form.get("start_time"),
-            "end_time": request.form.get("end_time"),
-            "location": request.form.get("location")
-        }
-
-        acknowledge = "acknowledge_conflicts" in request.form
-
-        result = services.events.edit_event(
-            access,
-            event_id,
-            event_data,
-            acknowledge_conflicts=acknowledge
-        )
-
-        if result.ok:
-            return redirect("/officer-calendar")
-
-        return render_template(
-            "edit_event.html",
-            event=event,
-            message=result.message
-        )
-
-    return render_template(
-        "edit_event.html",
-        event=event
-    )
 
 if __name__ == "__main__":
     prepare_database()
