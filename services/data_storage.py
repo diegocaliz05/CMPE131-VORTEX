@@ -179,10 +179,18 @@ class DataStorage:
             (n.user_id, n.event_id, n.message)).lastrowid
         return n
 
-    def get_notifications(self, user_id, limit=50):
-        return [Notification.from_row(r) for r in self.conn.execute(
-            "SELECT * FROM notifications WHERE user_id = ? ORDER BY notification_id DESC LIMIT ?",
-            (user_id, limit))]
+    def get_notifications(self, user_id, limit=50, unread_only=False):
+        query = "SELECT * FROM notifications WHERE user_id = ?"
+
+        if unread_only:
+            query += " AND read_status = 0"
+
+        query += " ORDER BY notification_id DESC LIMIT ?"
+
+        return [
+            Notification.from_row(r)
+            for r in self.conn.execute(query, (user_id, limit))
+        ]
 
     def count_unread(self, user_id) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_status = 0",
@@ -192,3 +200,10 @@ class DataStorage:
         return self.conn.execute(
             "UPDATE notifications SET read_status = 1 WHERE notification_id = ? AND user_id = ?",
             (notification_id, user_id)).rowcount > 0
+    
+    def mark_all_notifications_read(self, user_id):
+        return self.conn.execute(
+            "UPDATE notifications SET read_status = 1 "
+            "WHERE user_id = ? AND read_status = 0",
+            (user_id,)
+        ).rowcount

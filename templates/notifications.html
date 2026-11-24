@@ -1,1 +1,58 @@
-{% extends "base.html" %}{% block title %}Notifications{% endblock %}{% block content %}<h1>Notifications</h1>{% for n in items %}<article><p>{{n.message}}</p>{% if not n.read_status %}<form method="post" action="{{url_for('read_notification',item_id=n.notification_id)}}">{{token()}}<button>Mark read</button></form>{% else %}<small>Read</small>{% endif %}</article>{% else %}<p class="panel">No notifications yet.</p>{% endfor %}{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+
+<h1>Notifications</h1>
+
+<div class="notification-toolbar">
+
+    <div class="notification-filters">
+        <a href="{{ url_for('notifications', filter='all') }}">
+            All
+        </a>
+
+        <a href="{{ url_for('notifications', filter='unread') }}">
+            Unread
+        </a>
+    </div>
+
+    <p>{{ unread }} unread notifications</p>
+
+    {% if unread > 0 %}
+        <form method="post"
+              action="{{ url_for('read_all_notifications', filter=request.args.get('filter', 'unread')) }}">
+            {{ token() }}
+            <button type="submit">Mark all as read</button>
+        </form>
+    {% endif %}
+
+</div>
+
+{% for n in items %}
+    <article>
+        <p>{{ n.message }}</p>
+
+        {% if not n.read_status %}
+            <form method="post"
+                  action="{{ url_for('read_notification', item_id=n.notification_id, filter=request.args.get('filter', 'unread')) }}">
+                {{ token() }}
+                <button type="submit">Mark read</button>
+            </form>
+        {% else %}
+            <small>Read</small>
+        {% endif %}
+    </article>
+
+{% else %}
+    <p class="panel">
+        {% if unread_only %}
+            You're all caught up!
+        {% else %}
+            No notifications yet.
+        {% endif %}
+    </p>
+{% endfor %}
+
+{% endblock %}

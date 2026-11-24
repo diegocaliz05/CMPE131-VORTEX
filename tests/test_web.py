@@ -49,7 +49,21 @@ class TestWeb(Base):
         for action in ["confirmed","updated","cancelled"]:
             self.assertIn("was "+action, inbox)
         item = self.s.notifications.list_for(self.member.user_id)[0]
-        self.assertIn(">Read<", self.submit(member, f"/notifications/{item.notification_id}/read").text)
+        response = self.submit(
+            member, f"/notifications/{item.notification_id}/read"
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertNotIn(
+            f"/notifications/{item.notification_id}/read",
+            response.text
+        )
+
+        self.assertIn(
+            ">Read<",
+            member.get("/notifications?filter=all").text
+        )
 
     def test_session_and_invalid_login(self):
         client = self.member_web
