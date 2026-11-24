@@ -167,7 +167,7 @@ def cancel(event_id):
 
 @app.get("/notifications")
 def notifications():
-    unread_only = request.args.get("filter") == "unread"
+    unread_only = request.args.get("filter", "unread") == "unread"
     inbox = g.services.notifications
     return render_template("notifications.html", items=inbox.list_for(g.access.user_id, unread_only),
                            unread=inbox.unread_count(g.access.user_id), unread_only=unread_only)

@@ -24,8 +24,10 @@ class Notifications:
             log.exception("notification failure for event_id=%s", event.event_id)
         return created
 
-    def list_for(self, user_id):
-        return self._storage.get_notifications(user_id)
+    def list_for(self, user_id, unread_only=False):
+        return self._storage.get_notifications(
+            user_id, unread_only=unread_only
+        )
 
     def unread_count(self, user_id):
         return self._storage.count_unread(user_id)
@@ -33,3 +35,7 @@ class Notifications:
     def mark_read(self, notification_id, user_id) -> bool:
         with self._storage.transaction():
             return self._storage.mark_notification_read(notification_id, user_id)
+
+    def mark_all_read(self, user_id):
+        with self._storage.transaction():
+            return self._storage.mark_all_notifications_read(user_id)
